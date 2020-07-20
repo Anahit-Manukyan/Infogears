@@ -1,0 +1,465 @@
+---
+title: "Individual project"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, error = T)
+```
+
+## This dataset is called "Infogears". Since, nowadays the world is fighting against coronavirus, I have decided to take it and get new,  more interesting staff and compare them with information we get every day. The data is a new one; more and more rows are added daily.  And, since the data is new, there is no much statistics done on it. 
+  
+
+## Hypothesis: Let's understand does the society wear masks, does wearing masks useful and what are the common symptoms of the virus.
+
+Here is my github link:   https://github.com/Anahit-Manukyan/Infogears/tree/master 
+
+
+
+## R Markdown
+
+```{r}
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+library("syuzhet")
+library("ggplot2")
+library("dplyr")
+library("ggpubr")
+library("ggcorrplot")
+```
+
+```{r}
+library("ggridges")
+```
+
+
+
+
+```{r Reading the file}
+df <- read.csv("covid-07-13-2020.csv")
+#head(df, n=3)
+```
+
+
+## Let's look at the structure of the dataset. 
+```{r structure of the dataframe}
+#str(df)
+```
+
+```{r}
+print(paste0("Number of observations: ", nrow(df)))
+print(paste0("Number of variables: ", ncol(df)))
+```
+  
+As we can see, there exist 30088 observations and 33 variables in our data set.  
+Among which householdHeadcount is numerical, and the symptoms are in an integer type since, as we can see, each person checked he/she has the symptom (1) or not (0).
+
+
+## First of all, let's clean the data and make it more practical. 
+  
+1. Since the column "ï..age" is hard to find or type, let's just rename it to "age".   
+Here are our 33 columns.
+```{r Changing ï..age to age}
+names(df)[names(df) == "ï..age"] <- "age"
+
+#colnames(df)
+```
+
+
+2. Also, since the values of age are too long, we can change them
+
+The values in the original dataset
+```{r}
+unique(df$age)
+```
+
+
+```{r}
+df$age <- as.character(df$age)
+df$age[df$age == "interval_36_45"] <- "36-45"
+df$age[df$age == "interval_26_35"] <- "26-36"
+df$age[df$age == "interval_46_55"] <- "46-55"
+df$age[df$age == "interval_18_25"] <- "18-25"
+df$age[df$age == "interval_66_75"] <- "66-75"
+df$age[df$age == "interval_13_17"] <- "13-17"
+df$age[df$age == "interval_75_and_more"] <- "75+"
+df$age[df$age == "interval_56_65"] <- "56-65"
+```
+
+Here are the new values of the variable "age" 
+```{r}
+unique(df$age) 
+```
+
+
+3. Let's understand which columns we need.
+
+```{r Removing User Agent}
+df <- df %>% select(-c("userAgent", "guid", "ip"))
+#length(colnames(df))
+colnames(df)
+```
+Since, in my opinion, we do not need the information about user agent, I have deleted the column.  
+As a result, we are left with 30 columns. 
+
+     
+3. Let's make numerical variables factors, in order to do the calculations easily. 
+  
+
+```{r, fig.width=4, fig.height=4}
+ggplot(df, aes(x=factor(virusTest))) + geom_bar() +  
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +  
+  ylim(c(0,27000)) +  
+  theme(axis.text.x = element_text(colour="black", face="bold"),  
+        plot.title = element_text(hjust = 0.5, colour = "blue2", size = 15, face = "bold"),  
+        panel.background = element_rect(fill = "lightsteelblue1"), 
+        axis.title.x = element_text(face="bold", colour="blue2", size=12),  
+        axis.title.y = element_text(face="bold", colour="blue2", size=12)) +    
+  labs(title = "Barplot for the virus test", 
+       x = "Virus Test", 
+       y = "Frequency")
+```
+  
+  As we can see most of the patients are not tested or negatively tested, as a result, we cannot get  
+clear results regarding the infected people. 
+
+
+
+
+## Lets understand the test results and household headcount.
+
+```{r}
+bigBox <- ggplot(df, aes(x=factor(virusTest), y=householdHeadcount)) +  
+  geom_boxplot() +  
+  theme(axis.text.x = element_text(colour="black", face="bold"),  
+        plot.title = element_text(hjust = 0.5, colour = "blue2", face = "bold", size = 9),  
+        panel.background = element_rect(fill = "lightsteelblue1"), 
+        axis.title.x = element_text(face="bold", colour="blue2", size=12),  
+        axis.title.y = element_text(face="bold", colour="blue2", size=12)) +    
+  labs(title = "The connection between household headcount and age \n (Boxplot)", 
+       y = "Household Headcount", 
+       x = "Virus Test")
+```
+
+```{r}
+smallBox <- ggplot(df, aes(x=factor(virusTest), y=householdHeadcount)) +  
+  geom_boxplot() + 
+  ylim(c(0, 25)) +   
+  theme(axis.text.x = element_text(colour="black", face="bold"),  
+        plot.title = element_text(hjust = 0.5, colour = "blue2", face = "bold", size = 9),  
+        panel.background = element_rect(fill = "lightsteelblue1"), 
+        axis.title.x = element_text(face="bold", colour="blue2", size=12),  
+        axis.title.y = element_text(face="bold", colour="blue2", size=12)) +    
+  labs(title = "The connection between household headcount and age \n (Boxplot- zoomed)", 
+       y = "Household Headcount", 
+       x = "Virus Test")
+```
+
+
+```{r, fig.width=8, fig.height=4}
+ggarrange(bigBox, smallBox, nrow = 1, ncol = 2)
+```
+  
+From the first graph we can see that all the categories have many outliers however, their number is extremely dominant for the people who  are not tested. Positively tested people have household headcount mostly equal to 3, however, the outliers show that some people have  
+relationship with more than 7 people. The good point that we can get from the graph is that the people who are waiting for their  
+test results have shortened their household headcount (or they are just they are shown now). 
+
+
+
+## Let's have a closer look on the virus test results. 
+
+```{r}
+pos <- count(df %>% filter(virusTest=="positive"))
+await <- count(df %>% filter(virusTest=="awaitingResults"))
+neg <- count(df %>% filter(virusTest=="negative"))
+
+print(paste0("Positive: ", pos))
+print(paste0("Awaiting results: ", await))
+print(paste0("Negative: ", neg))
+```
+As we can see, majority of the people in this dataset are not tested.  
+However, from 30088 observations only 204 have the virus.
+
+
+
+```{r}
+tested <- df %>% 
+  filter(virusTest=="negative" | virusTest=="positive") %>% 
+  filter(faceCovering!="")
+
+```
+
+
+
+## Let's understand, does the society wear masks or not, and how it influences the spreading of the virus.
+
+```{r faceCovering count}
+never <- count(df %>% filter(faceCovering=="Never"))
+always <- count(df %>% filter(faceCovering=="Always"))
+sometimes <- count(df %>% filter(faceCovering=="Sometimes"))
+
+print(paste0("Never wore a mask: ", never))
+print(paste0("Always wore a mask: ", always))
+print(paste0("Sometime wore a mask: ", sometimes))
+```
+As we can see, the majority of people wore masks.  
+Let's understand how much wearing masks is dependent to the test being positive. 
+
+
+```{r, fig.width=4, fig.height=4}
+ggplot(tested, aes(fill=virusTest, x=faceCovering)) +  
+  geom_bar(position="fill", col="black") +  
+  scale_fill_manual(values = c("rosybrown2", "lightpink4")) +  
+  theme(axis.text.x = element_text(colour="black", face="bold"),  
+        plot.title = element_text(hjust = 0.5, colour = "lightpink4", size = 10, face = "bold"),  
+        panel.background = element_rect(fill = "cornsilk"), 
+        axis.title.x = element_text(face="bold", colour="lightpink4", size=12),  
+        axis.title.y = element_text(face="bold", colour="lightpink4", size=12)) +  
+  labs(x="Face Covering", y="Percentage",    
+       title = "How did face-covering influence the test results")
+  
+```
+
+As we can see, the people who never wore a mask had more changes of getting the virus,than the people who always or sometimes wore the  masks. However, the results of wearing sometimes or always nearly do not vary. 
+
+
+## Here are the major symptoms of the people with positive test results
+
+```{r}
+virus <- df %>% filter(virusTest=="positive")
+```
+
+
+
+```{r, fig.width=4, fig.height=4}
+body_acheV <- ggplot(virus, aes(x=factor(bodyAche))) + geom_bar() +  
+  ylim(c(0,250)) +  
+  theme(plot.title = element_text(hjust = 0.5, colour = "blue2"),  
+        panel.background = element_rect(fill = "lightsteelblue1")) +  
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +  
+  labs(title = "Bbody ache", 
+       x = "Body ache", 
+       y = "Count")
+
+diarV <- ggplot(virus, aes(x=factor(diarrhea))) + geom_bar() +  
+  ylim(c(0,250)) +  
+  theme(plot.title = element_text(hjust = 0.5, colour = "blue2"),  
+        panel.background = element_rect(fill = "lightsteelblue1")) + 
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +  
+  labs(title = "Diarrhea", 
+       x = "Diarrhea", 
+       y = "Count")
+
+difBreathV <- ggplot(virus, aes(x=factor(difficultyBreathing))) + geom_bar() +
+  ylim(c(0,250)) +  
+  theme(plot.title = element_text(hjust = 0.5, colour = "blue2"),  
+        panel.background = element_rect(fill = "lightsteelblue1")) +  
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +  
+  labs(title = "Breathing difficulties", 
+       x = "Difficulty to breath", 
+       y = "Count")
+
+headacheV <- ggplot(virus, aes(x=factor(headAche))) + geom_bar()+ 
+  ylim(c(0,250)) +  
+  theme(plot.title = element_text(hjust = 0.5, colour = "blue2"),  
+        panel.background = element_rect(fill = "lightsteelblue1")) +  
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +  
+  labs(title = "Headache", 
+       x = "Headache", 
+       y = "Count")
+
+eyesV <- ggplot(virus, aes(x=factor(irritatedEyes))) + geom_bar()+  
+  ylim(c(0,250)) +  
+  theme(plot.title = element_text(hjust = 0.5, colour = "blue2"),  
+        panel.background = element_rect(fill = "lightsteelblue1")) +    
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +  
+  labs(title = "Irritated eyes", 
+       x = "Irritated eyes", 
+       y = "Count")
+
+smellV <- ggplot(virus, aes(x=factor(lossOfSmell))) + geom_bar() +  
+  ylim(c(0,250)) +  
+  theme(plot.title = element_text(hjust = 0.5, colour = "blue2"),  
+        panel.background = element_rect(fill = "lightsteelblue1")) +   
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +  
+  labs(title = "Lossing smell", 
+       x = "Loss of Smell", 
+       y = "Count")
+
+coughV <- ggplot(virus, aes(x=factor(persistentCough))) + geom_bar() +  
+  ylim(c(0,250)) +  
+  theme(plot.title = element_text(hjust = 0.5, colour = "blue2"),  
+        panel.background = element_rect(fill = "lightsteelblue1")) +  
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +  
+  labs(title = "Persistent Cough", 
+       x = "Cough", 
+       y = "Count")
+
+
+throatV <- ggplot(virus, aes(x=factor(soreThroat))) + geom_bar() +  
+  ylim(c(0,250)) +  
+  theme(plot.title = element_text(hjust = 0.5, colour = "blue2"),  
+        panel.background = element_rect(fill = "lightsteelblue1")) +  
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +  
+  labs(title = "Sore throat", 
+       x = "Sore throat", 
+       y = "Count")
+
+
+high_temperatureV <- ggplot(virus, aes(x=factor(temperature))) + geom_bar() +  
+  ylim(c(0,250)) +  
+  theme(plot.title = element_text(hjust = 0.5, colour = "blue2"),  
+        panel.background = element_rect(fill = "lightsteelblue1")) +   
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +  
+  labs(title = "High temperature", 
+       x = "Temperature", 
+       y = "Count")
+
+
+```
+
+
+
+```{r}
+figureV <- ggarrange(body_acheV, diarV, difBreathV, headacheV, eyesV, smellV, coughV, throatV, high_temperatureV,  
+                     ncol=3, nrow=3)
+figureV
+
+```
+As we can see, the majority of people do not experience these symptoms. Most commonly, people experience headache and body ache.  
+Having irritated eyes is not a common symptom.   
+Although, some symptoms such as cough, breathing difficulties or high temperature are told to be common, the statistics does not show that. 
+  
+
+## Since headache is the most common symptom, let's understand does it vary from gender to gender
+
+```{r, fig.width=4, fig.height=4}
+ggplot(virus, aes(x=factor(gender), y=headAche)) + 
+  stat_summary(fun.y="sum", geom="point") +  
+  theme(axis.text.x = element_text(colour="black", face="bold"),  
+        plot.title = element_text(hjust = 0.5, colour = "blue2", face = "bold", size = 9),  
+        panel.background = element_rect(fill = "lightsteelblue1"), 
+        axis.title.x = element_text(face="bold", colour="blue2", size=12),  
+        axis.title.y = element_text(face="bold", colour="blue2", size=12)) +  
+  labs(title = "Headache count for gender",
+  x = "Gender",
+  y = "Headache count")
+```
+
+Here are the people who have the virus and experience headache. As we can see, women are more likely to have headaches. 
+
+
+
+## As the thesis statement suggests, we are going to find the people with the virus who shared information about their communication.  
+  
+We are going to take a close look at a random zip code and find out the problems at that neighborhood 
+
+```{r}
+un <- length(unique(df$zipCode))
+unV <- length(unique(virus$zipCode))
+print(paste0("As a result, there exists ", un, " zip codes in our dataframe, among which in ", unV, " unique zip codes people with the vius live/work"))
+```
+
+By checking the length of unique values of Zip Code, I wanted to understand if there exist people from the same neighborhood of from the same family. Since, from 30088 observations only 5903 are unique, we can understand that there exist many people having some contact to each other.   
+
+```{r}
+virExp <- virus %>% filter(exposureLevel=="haveDirectContact")
+n <- nrow(virExp)
+
+print(paste0(n, " people, who have the virus had direct contact with others."))
+```
+
+Let's understand, did they wore the masks or not. 
+
+
+```{r}
+virus <- virus %>% filter(faceCovering!="")
+```
+
+
+```{r, fig.width=4, fig.height=4}
+ggplot(virus, aes(fill=gender, x=faceCovering)) +  
+  geom_bar( col="black") +  
+  scale_fill_manual(values = c("rosybrown2", "lightskyblue", "lightpink4", "salmon")) +  
+  theme(axis.text.x = element_text(colour="black", face="bold"),  
+        plot.title = element_text(hjust = 0.5, colour = "lightpink4", size = 10, face = "bold"),  
+        panel.background = element_rect(fill = "cornsilk"), 
+        axis.title.x = element_text(face="bold", colour="lightpink4", size=12),  
+        axis.title.y = element_text(face="bold", colour="lightpink4", size=12)) +  
+  labs(x="Face Covering", y="Percentage",    
+       title = "Face covering related to the")
+```
+As we can see from the graph the majority of the people who had the virus wore masks. However, if we look at Never-Face-Covering people,  we can notice Men are the majority among not wearing the masks. Additionally, the graphs suggest that Women tend to cover the face. 
+
+
+
+## Lets try to find a neighborhood, where the virus is more spread. 
+```{r}
+majority <- virus %>% group_by(zipCode) %>% summarise(Freq = n()) %>% arrange(zipCode)
+head(majority, n=1)
+```
+
+The results show that there are not many people from the same neightborhood who have the virus. 
+Now let's find out how could possibly the virus spread, although frequency=2 is not a big number. 
+
+
+```{r}
+virus %>% filter(zipCode=="16735") %>% select(-c("createdAt", "guid", "householdHeadcount", "updatedAt", "id", "mentalHealthImpact", "leftForExercise", "irritatedEyes", "leftForWork", "noSymptoms", "zipCode", "antibodyTest", "leftForShopping", "leftForOther", "soreThroat"))
+```
+
+As we can see from the results, the woman, who wears face covering sometimes could have infected the person who always wears it.   Additionally, both if them had direct contact. We can say that, they are not from the same family, since their ip_addresses are  
+different. While they had no health issues, both of the people experience body ache, diarrhea, difficulty of breathing, disorientation,  fatigue, headache loss of smell, have persistent cough and high temperature. Finally, they are both in the risking group, since their  age interval is from 66 to 75. 
+
+
+```{r}
+two_way = table(dat$Marital_status, dat$approval_status)
+two_way
+
+prop.table(two_way) # cell percentages
+prop.table(two_way, 1) # row percentages
+prop.table(two_way, 2) # column percentages
+```
+
+
+```{r}
+df1 <- df %>% filter(faceCovering!="") 
+```
+
+
+  
+Creating a frequency table is a simple but effective way of finding distribution between the two categorical variables. The table() function can be used to create the two way table between two variables. 
+
+
+```{r}
+two_way = table(df1$mentalHealthImpact, df1$faceCovering)
+two_way
+```
+
+Cell percentages
+```{r}
+prop.table(two_way)
+```
+
+Row percentages
+```{r}
+prop.table(two_way, 1)
+```
+
+Column percentages
+```{r}
+prop.table(two_way, 2)
+```
+  As we can get from the graph, wearing masks and mental health impact have some connection or correlation. Majority of  the people have  some mental impact.
+  
+  
+## As we see masks are actually useful. The only thing that I would suggest is that people, especially the ones who are tested positively, sould wear masks to protect lives.  
+
+
+
+
+
+
